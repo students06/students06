@@ -667,12 +667,12 @@ router.post('/reports/attendance', async (req, res) => {
     const params = [];
     
     if (startDate) {
-      query += ' AND DATE(a.timestamp) >= ?';
+      query += ' AND a.timestamp >= ?';
       params.push(startDate);
     }
     
     if (endDate) {
-      query += ' AND DATE(a.timestamp) <= ?';
+      query += ' AND a.timestamp <= ?';
       params.push(endDate);
     }
     
@@ -738,7 +738,7 @@ router.get('/dashboard/stats', async (req, res) => {
         SUM(CASE WHEN status = 'present' THEN 1 ELSE 0 END) as present,
         SUM(CASE WHEN status = 'absent' THEN 1 ELSE 0 END) as absent
       FROM attendance 
-      WHERE DATE(timestamp) = CURDATE()
+      WHERE timestamp >= CURDATE() AND timestamp < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
     `);
     
     const attendanceRate = todayAttendance[0].total > 0 
@@ -751,7 +751,7 @@ router.get('/dashboard/stats', async (req, res) => {
       FROM classes c
       JOIN sessions s ON c.id = s.class_id
       JOIN attendance a ON s.id = a.session_id
-      WHERE DATE(a.timestamp) = CURDATE()
+      WHERE a.timestamp >= CURDATE() AND a.timestamp < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
       GROUP BY c.id, c.name
       HAVING (SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) / COUNT(*)) * 100 < 70
     `);

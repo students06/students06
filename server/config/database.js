@@ -18,7 +18,10 @@ const dbConfig = {
   acquireTimeout: 60000,
   timeout: 60000,
   reconnect: true,
-  multipleStatements: true
+  multipleStatements: true,
+  supportBigNumbers: true,
+  bigNumberStrings: true,
+  dateStrings: false
 };
 
 // إنشاء pool للاتصالات
