@@ -13,13 +13,18 @@ export const Login: React.FC = () => {
     e.preventDefault();
     console.log('Form submitted with:', username, password);
     setError('');
-    const success = login(username, password);
-    console.log('Login result:', success);
-    if (!success) {
-      setError('اسم المستخدم أو كلمة المرور غير صحيحة');
-    } else {
-      console.log('Login successful, should redirect now');
-    }
+    
+    login(username, password).then(success => {
+      console.log('Login result:', success);
+      if (!success) {
+        setError('اسم المستخدم أو كلمة المرور غير صحيحة');
+      } else {
+        console.log('Login successful, should redirect now');
+      }
+    }).catch(error => {
+      console.error('Login error:', error);
+      setError('حدث خطأ أثناء تسجيل الدخول');
+    });
   };
 
   return (

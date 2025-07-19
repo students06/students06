@@ -1,5 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
+console.log('🔗 API Base URL:', API_BASE_URL);
+
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
@@ -10,6 +12,8 @@ export interface ApiResponse<T = any> {
 class ApiService {
   private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
+    console.log('📡 API Request:', url, options.method || 'GET');
+    
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -24,25 +28,48 @@ class ApiService {
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      console.log('📨 Response Status:', response.status, response.statusText);
       
       if (!response.ok) {
-        throw new Error(data.message || 'حدث خطأ في الخادم');
+        console.error('❌ HTTP Error:', response.status, response.statusText);
+        
+        // محاولة قراءة الاستجابة حتى لو كانت خطأ
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `HTTP Error: ${response.status}`);
+        } catch (jsonError) {
+          throw new Error(`HTTP Error: ${response.status} ${response.statusText}`);
+        }
       }
+      
+      const data = await response.json();
+      console.log('📊 Response Data:', data);
       
       return data;
     } catch (error) {
       console.error('API Error:', error);
+      
+      // تحسين رسائل الخطأ
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('لا يمكن الاتصال بالخادم. تأكد من تشغيل الخادم الخلفي.');
+      }
+      
       throw error;
     }
   }
 
   // المصادقة
   async login(username: string, password: string) {
+    console.log('🔐 تسجيل الدخول:', username);
     return this.request('/auth/login', {
       method: 'POST',
       body: { username, password },
     });
+  }
+
+  // اختبار الاتصال
+  async testConnection() {
+    return this.request('/test');
   }
 
   // المستخدمين

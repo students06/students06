@@ -8,17 +8,45 @@ const Subject = require('../models/Subject');
 const { executeQuery } = require('../config/database');
 const whatsappService = require('../services/whatsappService');
 
+// إضافة middleware للتسجيل
+router.use((req, res, next) => {
+  console.log(`🔗 API Request: ${req.method} ${req.path}`);
+  next();
+});
+
+// اختبار API
+router.get('/test', (req, res) => {
+  console.log('🧪 اختبار API');
+  res.json({ 
+    success: true, 
+    message: 'API يعمل بشكل صحيح',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // مصادقة المستخدم
 router.post('/auth/login', async (req, res) => {
   try {
+    console.log('🔐 محاولة تسجيل دخول:', req.body.username);
     const { username, password } = req.body;
     
+    if (!username || !password) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'اسم المستخدم وكلمة المرور مطلوبان' 
+      });
+    }
+    
     const user = await User.findByUsername(username);
+    console.log('👤 المستخدم الموجود:', user ? 'نعم' : 'لا');
+    
     if (!user) {
       return res.status(401).json({ success: false, message: 'اسم المستخدم غير صحيح' });
     }
     
     const isValidPassword = await User.verifyPassword(password, user.password);
+    console.log('🔑 كلمة المرور صحيحة:', isValidPassword ? 'نعم' : 'لا');
+    
     if (!isValidPassword) {
       return res.status(401).json({ success: false, message: 'كلمة المرور غير صحيحة' });
     }
@@ -26,10 +54,15 @@ router.post('/auth/login', async (req, res) => {
     // إزالة كلمة المرور من الاستجابة
     delete user.password;
     
+    console.log('✅ تم تسجيل الدخول بنجاح للمستخدم:', user.name);
     res.json({ success: true, data: user });
   } catch (error) {
     console.error('خطأ في تسجيل الدخول:', error);
-    res.status(500).json({ success: false, message: 'خطأ في الخادم' });
+    res.status(500).json({ 
+      success: false, 
+      message: 'خطأ في الخادم',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

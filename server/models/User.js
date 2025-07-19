@@ -3,9 +3,16 @@ const bcrypt = require('bcryptjs');
 
 class User {
   static async findByUsername(username) {
+    console.log('🔍 البحث عن المستخدم:', username);
     const query = 'SELECT * FROM users WHERE username = ? AND is_active = TRUE';
-    const results = await executeQuery(query, [username]);
-    return results[0] || null;
+    try {
+      const results = await executeQuery(query, [username]);
+      console.log('📊 نتائج البحث:', results.length > 0 ? 'موجود' : 'غير موجود');
+      return results[0] || null;
+    } catch (error) {
+      console.error('❌ خطأ في البحث عن المستخدم:', error);
+      throw error;
+    }
   }
 
   static async findById(id) {
@@ -61,7 +68,15 @@ class User {
   }
 
   static async verifyPassword(plainPassword, hashedPassword) {
-    return await bcrypt.compare(plainPassword, hashedPassword);
+    console.log('🔐 التحقق من كلمة المرور...');
+    try {
+      const isValid = await bcrypt.compare(plainPassword, hashedPassword);
+      console.log('✅ نتيجة التحقق:', isValid ? 'صحيحة' : 'خاطئة');
+      return isValid;
+    } catch (error) {
+      console.error('❌ خطأ في التحقق من كلمة المرور:', error);
+      return false;
+    }
   }
 
   static async updatePermissions(id, permissions) {

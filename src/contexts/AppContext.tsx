@@ -186,20 +186,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
+      console.log('🔐 محاولة تسجيل الدخول...', { username });
       setLoading(true);
       setError(null);
       
       const response = await apiService.login(username, password);
+      console.log('📡 استجابة الخادم:', response);
       
       if (response.success && response.data) {
+        console.log('✅ تم تسجيل الدخول بنجاح');
         setCurrentUser(response.data);
         setLastActivity(Date.now());
         return true;
       }
       
+      console.log('❌ فشل تسجيل الدخول:', response.message);
       setError(response.message || 'فشل في تسجيل الدخول');
       return false;
     } catch (error: any) {
+      console.error('❌ خطأ في تسجيل الدخول:', error);
       setError(error.message || 'حدث خطأ في تسجيل الدخول');
       return false;
     } finally {
