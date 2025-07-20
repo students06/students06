@@ -48,8 +48,6 @@ class ApiService {
       
       const data = await response.json();
       console.log('📊 Response Data:', data);
-      
-      const data = await response.json();
       console.log('✅ API Response Data:', data);
       return data;
     } catch (error) {
