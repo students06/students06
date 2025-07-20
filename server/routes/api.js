@@ -175,7 +175,6 @@ router.get('/students/generate-barcode', async (req, res) => {
 // إدارة الفصول
 router.get('/classes', async (req, res) => {
   try {
-    console.log('📚 جلب قائمة الفصول...');
     const query = `
       SELECT c.*, t.name as teacher_name, s.name as subject_name
       FROM classes c
@@ -185,11 +184,9 @@ router.get('/classes', async (req, res) => {
       ORDER BY c.name
     `;
     const classes = await executeQuery(query);
-    const formattedClasses = formatDates(classes);
-    console.log('✅ تم جلب', classes.length, 'فصل');
-    res.json({ success: true, data: formattedClasses });
+    res.json({ success: true, data: classes });
   } catch (error) {
-    console.error('❌ خطأ في جلب الفصول:', error);
+    console.error('خطأ في جلب الفصول:', error);
     res.status(500).json({ success: false, message: 'خطأ في جلب البيانات' });
   }
 });
@@ -326,41 +323,80 @@ router.delete('/subjects/:id', async (req, res) => {
 // إدارة الأماكن
 router.get('/locations', async (req, res) => {
   try {
-    const locations = await Location.getAll();
-    res.json({ success: true, data: locations });
+    console.log('📍 جلب قائمة الأماكن...');
+    const query = 'SELECT * FROM locations WHERE is_active = TRUE ORDER BY name ASC';
+    const locations = await executeQuery(query);
+    const formattedLocations = formatDates(locations);
+    console.log('✅ تم جلب', locations.length, 'مكان');
+    res.json({ success: true, data: formattedLocations });
   } catch (error) {
-    console.error('خطأ في جلب الأماكن:', error);
-    res.status(500).json({ success: false, message: 'خطأ في جلب البيانات' });
+    console.error('❌ خطأ في جلب الأماكن:', error);
+    res.status(500).json({ success: false, message: 'خطأ في جلب قائمة الأماكن' });
   }
 });
 
 router.post('/locations', async (req, res) => {
   try {
-    const locationId = await Location.create(req.body);
-    res.json({ success: true, data: { id: locationId } });
+    console.log('➕ إضافة مكان جديد:', req.body);
+    const { name, room_number, capacity, description } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'اسم المكان مطلوب' });
+    }
+    
+    const query = 'INSERT INTO locations (name, room_number, capacity, description) VALUES (?, ?, ?, ?)';
+    const result = await executeQuery(query, [name, room_number || null, capacity || 30, description || null]);
+    
+    console.log('✅ تم إضافة المكان بنجاح، ID:', result.insertId);
+    res.json({ success: true, message: 'تم إضافة المكان بنجاح', id: result.insertId });
   } catch (error) {
-    console.error('خطأ في إضافة المكان:', error);
+    console.error('❌ خطأ في إضافة المكان:', error);
     res.status(500).json({ success: false, message: 'خطأ في إضافة المكان' });
   }
 });
 
 router.put('/locations/:id', async (req, res) => {
   try {
-    const success = await Location.update(req.params.id, req.body);
-    res.json({ success });
+    console.log('✏️ تحديث المكان:', req.params.id, req.body);
+    const { id } = req.params;
+    const { name, room_number, capacity, description } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'اسم المكان مطلوب' });
+    }
+    
+    const query = 'UPDATE locations SET name = ?, room_number = ?, capacity = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+    const result = await executeQuery(query, [name, room_number || null, capacity || 30, description || null, id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'المكان غير موجود' });
+    }
+    
+    console.log('✅ تم تحديث المكان بنجاح');
+    res.json({ success: true, message: 'تم تحديث المكان بنجاح' });
   } catch (error) {
-    console.error('خطأ في تحديث المكان:', error);
+    console.error('❌ خطأ في تحديث المكان:', error);
     res.status(500).json({ success: false, message: 'خطأ في تحديث المكان' });
   }
 });
 
 router.delete('/locations/:id', async (req, res) => {
   try {
-    const success = await Location.delete(req.params.id);
-    res.json({ success });
+    console.log('🗑️ حذف المكان:', req.params.id);
+    const { id } = req.params;
+    
+    const query = 'UPDATE locations SET is_active = FALSE WHERE id = ?';
+    const result = await executeQuery(query, [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'المكان غير موجود' });
+    }
+    
+    console.log('✅ تم حذف المكان بنجاح');
+    res.json({ success: true, message: 'تم حذف المكان بنجاح' });
   } catch (error) {
-    console.error('خطأ في حذف المكان:', error);
-    res.status(500).json({ success: false, message: error.message });
+    console.error('❌ خطأ في حذف المكان:', error);
+    res.status(500).json({ success: false, message: 'خطأ في حذف المكان' });
   }
 });
 

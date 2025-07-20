@@ -139,6 +139,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setError(null);
     
     try {
+      console.log('🔄 تحديث البيانات...');
       const [
         studentsRes,
         classesRes,
@@ -161,17 +162,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         apiService.getLocations()
       ]);
 
-      setStudents(studentsRes.data || []);
-      setClasses(classesRes.data || []);
-      setSessions(sessionsRes.data || []);
-      setAttendance(attendanceRes.data || []);
-      setReports(reportsRes.data || []);
-      setUsers(usersRes.data || []);
-      setTeachers(teachersRes.data || []);
-      setSubjects(subjectsRes.data || []);
-      setLocations(locationsRes.data || []);
+      // Helper function to parse dates in data
+      const parseDates = (data: any[], dateFields: string[]) => {
+        if (!Array.isArray(data)) return data;
+        return data.map(item => {
+          const parsed = { ...item };
+          dateFields.forEach(field => {
+            if (parsed[field] && typeof parsed[field] === 'string') {
+              const date = new Date(parsed[field]);
+              if (!isNaN(date.getTime())) {
+                parsed[field] = date.toISOString();
+              }
+            }
+          });
+          return parsed;
+        });
+      };
+
+      setStudents(parseDates(studentsRes.data || [], ['created_at', 'updated_at', 'date_of_birth']));
+      setClasses(parseDates(classesRes.data || [], ['created_at', 'updated_at']));
+      setSessions(parseDates(sessionsRes.data || [], ['created_at', 'updated_at', 'start_time', 'end_time']));
+      setAttendance(parseDates(attendanceRes.data || [], ['timestamp']));
+      setReports(parseDates(reportsRes.data || [], ['created_at', 'updated_at']));
+      setUsers(parseDates(usersRes.data || [], ['created_at', 'updated_at']));
+      setTeachers(parseDates(teachersRes.data || [], ['created_at', 'updated_at']));
+      setSubjects(parseDates(subjectsRes.data || [], ['created_at', 'updated_at']));
+      setLocations(parseDates(locationsRes.data || [], ['created_at', 'updated_at']));
+      
+      console.log('✅ تم تحديث البيانات بنجاح');
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      console.error('❌ خطأ في تحديث البيانات:', error);
       setError('حدث خطأ في تحميل البيانات');
     } finally {
       setLoading(false);

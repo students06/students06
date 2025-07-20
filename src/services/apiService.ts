@@ -27,10 +27,14 @@ class ApiService {
     }
 
     try {
+      console.log('🌐 API Request:', endpoint, options.method || 'GET');
       const response = await fetch(url, config);
       console.log('📨 Response Status:', response.status, response.statusText);
       
+      console.log('📡 API Response Status:', response.status, response.statusText);
+      
       if (!response.ok) {
+        console.error('❌ API Error Response:', response.status, response.statusText);
         console.error('❌ HTTP Error:', response.status, response.statusText);
         
         // محاولة قراءة الاستجابة حتى لو كانت خطأ
@@ -45,9 +49,11 @@ class ApiService {
       const data = await response.json();
       console.log('📊 Response Data:', data);
       
+      const data = await response.json();
+      console.log('✅ API Response Data:', data);
       return data;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('❌ API Error:', error);
       
       // تحسين رسائل الخطأ
       if (error instanceof TypeError && error.message.includes('fetch')) {
