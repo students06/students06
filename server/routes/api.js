@@ -175,6 +175,7 @@ router.get('/students/generate-barcode', async (req, res) => {
 // إدارة الفصول
 router.get('/classes', async (req, res) => {
   try {
+    console.log('📚 جلب قائمة الفصول...');
     const query = `
       SELECT c.*, t.name as teacher_name, s.name as subject_name
       FROM classes c
@@ -184,9 +185,11 @@ router.get('/classes', async (req, res) => {
       ORDER BY c.name
     `;
     const classes = await executeQuery(query);
-    res.json({ success: true, data: classes });
+    const formattedClasses = formatDates(classes);
+    console.log('✅ تم جلب', classes.length, 'فصل');
+    res.json({ success: true, data: formattedClasses });
   } catch (error) {
-    console.error('خطأ في جلب الفصول:', error);
+    console.error('❌ خطأ في جلب الفصول:', error);
     res.status(500).json({ success: false, message: 'خطأ في جلب البيانات' });
   }
 });
