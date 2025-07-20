@@ -6,10 +6,7 @@ console.log('DB_HOST:', process.env.DB_HOST);
 console.log('DB_USER:', process.env.DB_USER);
 console.log('DB_NAME:', process.env.DB_NAME);
 console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '[محدد]' : '[فارغ]');
-  timezone: '+00:00',
-  dateStrings: true,
-  supportBigNumbers: true,
-  bigNumberStrings: true
+
 // إعدادات قاعدة البيانات
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
