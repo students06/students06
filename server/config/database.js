@@ -6,7 +6,10 @@ console.log('DB_HOST:', process.env.DB_HOST);
 console.log('DB_USER:', process.env.DB_USER);
 console.log('DB_NAME:', process.env.DB_NAME);
 console.log('DB_PASSWORD:', process.env.DB_PASSWORD ? '[محدد]' : '[فارغ]');
-
+  timezone: '+00:00',
+  dateStrings: true,
+  supportBigNumbers: true,
+  bigNumberStrings: true
 // إعدادات قاعدة البيانات
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
@@ -61,7 +64,13 @@ async function testConnection() {
     console.log('✅ تم الاتصال بقاعدة البيانات بنجاح');
     connection.release();
     return true;
-  } catch (error) {
+    console.error('❌ خطأ في الاتصال بقاعدة البيانات:', error);
+    console.error('تفاصيل الخطأ:', {
+      code: error.code,
+      errno: error.errno,
+      sqlMessage: error.sqlMessage,
+      sqlState: error.sqlState
+    });
     console.error('❌ خطأ في الاتصال بقاعدة البيانات:');
     console.error('   الرسالة:', error.message);
     console.error('   الكود:', error.code);
@@ -83,9 +92,18 @@ async function testConnection() {
 async function executeQuery(query, params = []) {
   try {
     const [results] = await pool.execute(query, params);
-    return results;
-  } catch (error) {
-    console.error('خطأ في تنفيذ الاستعلام:', error);
+    console.log('✅ نتائج الاستعلام:', results.length || results.affectedRows || 'تم التنفيذ');
+    console.log('🔍 تنفيذ الاستعلام:', query.substring(0, 100) + '...');
+    console.log('📊 المعاملات:', params);
+    console.error('❌ خطأ في تنفيذ الاستعلام:', error);
+    console.error('📝 الاستعلام:', query);
+    console.error('📊 المعاملات:', params);
+    console.error('تفاصيل الخطأ:', {
+      code: error.code,
+      errno: error.errno,
+      sqlMessage: error.sqlMessage,
+      sqlState: error.sqlState
+    });
     throw error;
   }
 }
