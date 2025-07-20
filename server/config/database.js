@@ -61,6 +61,7 @@ async function testConnection() {
     console.log('✅ تم الاتصال بقاعدة البيانات بنجاح');
     connection.release();
     return true;
+  } catch (error) {
     console.error('❌ خطأ في الاتصال بقاعدة البيانات:', error);
     console.error('تفاصيل الخطأ:', {
       code: error.code,
@@ -92,6 +93,8 @@ async function executeQuery(query, params = []) {
     console.log('✅ نتائج الاستعلام:', results.length || results.affectedRows || 'تم التنفيذ');
     console.log('🔍 تنفيذ الاستعلام:', query.substring(0, 100) + '...');
     console.log('📊 المعاملات:', params);
+    return results;
+  } catch (error) {
     console.error('❌ خطأ في تنفيذ الاستعلام:', error);
     console.error('📝 الاستعلام:', query);
     console.error('📊 المعاملات:', params);
