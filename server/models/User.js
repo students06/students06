@@ -8,6 +8,15 @@ class User {
     try {
       const results = await executeQuery(query, [username]);
       console.log('📊 نتائج البحث:', results.length > 0 ? 'موجود' : 'غير موجود');
+      if (results.length > 0) {
+        console.log('👤 بيانات المستخدم:', {
+          id: results[0].id,
+          username: results[0].username,
+          name: results[0].name,
+          role: results[0].role,
+          passwordHash: results[0].password ? 'موجود' : 'مفقود'
+        });
+      }
       return results[0] || null;
     } catch (error) {
       console.error('❌ خطأ في البحث عن المستخدم:', error);

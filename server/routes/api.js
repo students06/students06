@@ -28,9 +28,11 @@ router.get('/test', (req, res) => {
 router.post('/auth/login', async (req, res) => {
   try {
     console.log('🔐 محاولة تسجيل دخول:', req.body.username);
+    console.log('📝 بيانات الطلب:', { username: req.body.username, hasPassword: !!req.body.password });
     const { username, password } = req.body;
     
     if (!username || !password) {
+      console.log('❌ بيانات ناقصة:', { username: !!username, password: !!password });
       return res.status(400).json({ 
         success: false, 
         message: 'اسم المستخدم وكلمة المرور مطلوبان' 
@@ -41,13 +43,19 @@ router.post('/auth/login', async (req, res) => {
     console.log('👤 المستخدم الموجود:', user ? 'نعم' : 'لا');
     
     if (!user) {
+      console.log('❌ المستخدم غير موجود في قاعدة البيانات');
       return res.status(401).json({ success: false, message: 'اسم المستخدم غير صحيح' });
     }
+    
+    console.log('🔑 التحقق من كلمة المرور...');
+    console.log('📝 كلمة المرور المدخلة:', password);
+    console.log('🔐 Hash المخزن:', user.password ? 'موجود' : 'مفقود');
     
     const isValidPassword = await User.verifyPassword(password, user.password);
     console.log('🔑 كلمة المرور صحيحة:', isValidPassword ? 'نعم' : 'لا');
     
     if (!isValidPassword) {
+      console.log('❌ كلمة المرور غير صحيحة');
       return res.status(401).json({ success: false, message: 'كلمة المرور غير صحيحة' });
     }
     
