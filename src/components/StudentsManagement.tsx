@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Users, Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
