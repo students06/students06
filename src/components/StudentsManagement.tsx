@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Users, Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
 
 export const StudentsManagement: React.FC = () => {
-  const { students, classes, attendance, addStudent, updateStudent, deleteStudent, generateStudentBarcode } = useApp();
+  const { students, classes, attendance, addStudent, updateStudent, deleteStudent, generateStudentBarcode, hasPermission } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingStudent, setEditingStudent] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -24,6 +27,16 @@ export const StudentsManagement: React.FC = () => {
     return matchesSearch && matchesClass;
   });
 
+  // حساب البيانات للصفحة الحالية
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentStudents = filteredStudents.slice(startIndex, endIndex);
+
+  // إعادة تعيين الصفحة عند تغيير الفلاتر
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedClass]);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -33,16 +46,36 @@ export const StudentsManagement: React.FC = () => {
       return;
     }
 
-    // التحقق من طول رقم الهاتف
-    if (formData.parentPhone.length < 11) {
-      alert('رقم هاتف ولي الأمر يجب أن يكون 11 رقم على الأقل');
+    // تنسيق رقم الهاتف تلقائياً
+    let formattedPhone = formData.parentPhone.replace(/\D/g, ''); // إزالة الأحرف غير الرقمية
+    
+    // إضافة كود الدولة تلقائياً
+    if (formattedPhone.startsWith('0')) {
+      // رقم مصري محتمل
+      formattedPhone = '20' + formattedPhone.substring(1);
+    } else if (formattedPhone.startsWith('1') && formattedPhone.length === 10) {
+      // رقم مصري بدون الصفر
+      formattedPhone = '20' + formattedPhone;
+    } else if (formattedPhone.startsWith('5') && formattedPhone.length === 9) {
+      // رقم سعودي بدون كود الدولة
+      formattedPhone = '966' + formattedPhone;
+    } else if (!formattedPhone.startsWith('20') && !formattedPhone.startsWith('966')) {
+      // إذا لم يبدأ بكود دولة، افترض أنه مصري
+      if (formattedPhone.length >= 10) {
+        formattedPhone = '20' + formattedPhone;
+      }
+    }
+    
+    // التحقق من طول الرقم بعد التنسيق
+    if (formattedPhone.length < 12) {
+      alert('رقم هاتف ولي الأمر غير صحيح. يجب أن يكون رقم صحيح مع كود الدولة');
       return;
     }
     
     if (editingStudent) {
       updateStudent(editingStudent, {
         name: formData.name,
-        parentPhone: formData.parentPhone,
+        parentPhone: formattedPhone,
         parentEmail: formData.parentEmail,
         classId: formData.classId
       });
@@ -51,7 +84,7 @@ export const StudentsManagement: React.FC = () => {
       addStudent({
         name: formData.name,
         barcode: formData.barcode || '',
-        parentPhone: formData.parentPhone,
+        parentPhone: formattedPhone,
         parentEmail: formData.parentEmail,
         classId: formData.classId
       });
@@ -99,6 +132,7 @@ export const StudentsManagement: React.FC = () => {
           <Users className="h-6 w-6 ml-2" />
           إدارة الطلاب
         </h1>
+        {hasPermission('studentsEdit') && (
         <button
           onClick={() => setShowAddForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center"
@@ -106,6 +140,7 @@ export const StudentsManagement: React.FC = () => {
           <Plus className="h-4 w-4 ml-2" />
           إضافة طالب
         </button>
+        )}
       </div>
 
       {/* نموذج الإضافة/التعديل */}
@@ -144,12 +179,11 @@ export const StudentsManagement: React.FC = () => {
                   value={formData.parentPhone}
                   onChange={(e) => setFormData({ ...formData, parentPhone: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="966501234567"
-                  minLength={11}
+                  placeholder="01002246668 أو 966501234567"
                   required
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  يجب أن يكون 11 رقم على الأقل (مثال: 966501234567)
+                  سيتم إضافة كود الدولة تلقائياً (مثال: 01002246668 → 201002246668)
                 </p>
               </div>
               <div>
@@ -257,7 +291,7 @@ export const StudentsManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredStudents.map((student) => {
+              {currentStudents.map((student) => {
                 const studentClass = classes.find(c => c.id === student.classId);
                 return (
                   <tr key={student.id} className="hover:bg-gray-50">
@@ -293,6 +327,7 @@ export const StudentsManagement: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleEdit(student)}
+                          disabled={!hasPermission('studentsEdit')}
                           className="text-green-600 hover:text-green-900 p-1"
                           title="تعديل"
                         >
@@ -300,6 +335,7 @@ export const StudentsManagement: React.FC = () => {
                         </button>
                         <button
                           onClick={() => handleDelete(student.id)}
+                          disabled={!hasPermission('studentsDelete')}
                           className="text-red-600 hover:text-red-900 p-1"
                           title="حذف"
                         >
@@ -313,12 +349,76 @@ export const StudentsManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                السابق
+              </button>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="mr-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                التالي
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  عرض <span className="font-medium">{startIndex + 1}</span> إلى{' '}
+                  <span className="font-medium">{Math.min(endIndex, filteredStudents.length)}</span> من{' '}
+                  <span className="font-medium">{filteredStudents.length}</span> نتيجة
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    السابق
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        page === currentPage
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    التالي
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {filteredStudents.length === 0 && (
+      {currentStudents.length === 0 && (
         <div className="text-center py-12">
           <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">لا توجد طلاب مطابقين للبحث</p>
+          <p className="text-gray-500">
+            {filteredStudents.length === 0 ? 'لا توجد طلاب مطابقين للبحث' : 'لا توجد بيانات في هذه الصفحة'}
+          </p>
         </div>
       )}
     </div>

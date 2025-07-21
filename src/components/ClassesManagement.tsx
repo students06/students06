@@ -3,8 +3,10 @@ import { useApp } from '../contexts/AppContext';
 import { BookOpen, Plus, Edit, Trash2, Search, Eye, Users, X, ArrowRight, Printer } from 'lucide-react';
 
 export const ClassesManagement: React.FC = () => {
-  const { classes, students, teachers, subjects, sessions, addClass, updateClass, deleteClass, removeStudentFromClass, transferStudentToClass } = useApp();
+  const { classes, students, teachers, subjects, sessions, addClass, updateClass, deleteClass, removeStudentFromClass, transferStudentToClass, hasPermission } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(9);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingClass, setEditingClass] = useState<string | null>(null);
   const [showClassDetails, setShowClassDetails] = useState<string | null>(null);
@@ -20,6 +22,16 @@ export const ClassesManagement: React.FC = () => {
     cls.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // حساب البيانات للصفحة الحالية
+  const totalPages = Math.ceil(filteredClasses.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentClasses = filteredClasses.slice(startIndex, endIndex);
+
+  // إعادة تعيين الصفحة عند تغيير البحث
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editingClass) {
@@ -178,6 +190,7 @@ export const ClassesManagement: React.FC = () => {
           <BookOpen className="h-6 w-6 ml-2" />
           إدارة الفصول
         </h1>
+        {hasPermission('classesEdit') && (
         <button
           onClick={() => setShowAddForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center"
@@ -185,6 +198,7 @@ export const ClassesManagement: React.FC = () => {
           <Plus className="h-4 w-4 ml-2" />
           إضافة فصل
         </button>
+        )}
       </div>
 
       {/* نموذج الإضافة/التعديل */}
@@ -425,7 +439,7 @@ export const ClassesManagement: React.FC = () => {
 
       {/* قائمة الفصول */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredClasses.map((cls) => {
+        {currentClasses.map((cls) => {
           const classStudents = students.filter(s => s.classId === cls.id);
           const teacherDisplayName = cls.teacherId ? getTeacherDisplayName(cls.teacherId) : 'غير محدد';
           
@@ -441,6 +455,7 @@ export const ClassesManagement: React.FC = () => {
                   >
                     <Eye className="h-4 w-4" />
                   </button>
+                  {hasPermission('classesEdit') && (
                   <button
                     onClick={() => handleEdit(cls)}
                     className="text-green-600 hover:text-green-900 p-1"
@@ -448,6 +463,8 @@ export const ClassesManagement: React.FC = () => {
                   >
                     <Edit className="h-4 w-4" />
                   </button>
+                  )}
+                  {hasPermission('classesDelete') && (
                   <button
                     onClick={() => handleDelete(cls.id)}
                     className="text-red-600 hover:text-red-900 p-1"
@@ -455,6 +472,7 @@ export const ClassesManagement: React.FC = () => {
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
+                  )}
                 </div>
               </div>
               
@@ -498,10 +516,49 @@ export const ClassesManagement: React.FC = () => {
         })}
       </div>
 
-      {filteredClasses.length === 0 && (
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-4 space-x-reverse mt-6">
+          <button
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            السابق
+          </button>
+          
+          <div className="flex space-x-1 space-x-reverse">
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <button
+                key={page}
+                onClick={() => setCurrentPage(page)}
+                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                  page === currentPage
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+          </div>
+          
+          <button
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            التالي
+          </button>
+        </div>
+      )}
+
+      {currentClasses.length === 0 && (
         <div className="text-center py-12">
           <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">لا توجد فصول مطابقة للبحث</p>
+          <p className="text-gray-500">
+            {filteredClasses.length === 0 ? 'لا توجد فصول مطابقة للبحث' : 'لا توجد بيانات في هذه الصفحة'}
+          </p>
         </div>
       )}
     </div>

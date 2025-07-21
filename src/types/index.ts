@@ -10,14 +10,29 @@ export interface User {
 
 export interface UserPermissions {
   students: boolean;
+  studentsEdit: boolean;
+  studentsDelete: boolean;
   classes: boolean;
+  classesEdit: boolean;
+  classesDelete: boolean;
   teachers: boolean;
+  teachersEdit: boolean;
+  teachersDelete: boolean;
   sessions: boolean;
+  sessionsEdit: boolean;
+  sessionsDelete: boolean;
   attendance: boolean;
+  attendanceEdit: boolean;
+  attendanceDelete: boolean;
   reports: boolean;
+  reportsEdit: boolean;
+  reportsDelete: boolean;
   whatsapp: boolean;
   settings: boolean;
+  settingsEdit: boolean;
   users: boolean;
+  usersEdit: boolean;
+  usersDelete: boolean;
 }
 
 export interface Subject {

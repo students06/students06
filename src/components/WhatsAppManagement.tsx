@@ -14,13 +14,87 @@ export const WhatsAppManagement: React.FC = () => {
   const [testPhoneNumber, setTestPhoneNumber] = useState('');
   const [testMessage, setTestMessage] = useState('');
   const [testResult, setTestResult] = useState<{ show: boolean, success: boolean, message: string }>({ show: false, success: false, message: '' });
+  const [editingTemplate, setEditingTemplate] = useState<string | null>(null);
+  const [customTemplates, setCustomTemplates] = useState(messageTemplates);
 
-  const messageTemplates = {
+  const defaultTemplates = {
     absence: 'عزيزي ولي الأمر، نود إعلامكم بأن الطالب/ة {studentName} كان غائباً في جلسة {className} بتاريخ {date}. نرجو المتابعة.',
     performance: 'عزيزي ولي الأمر، تقرير أداء الطالب/ة {studentName} في جلسة {className}: تقييم المعلم: {rating}/5، المشاركة: {participation}/5، الواجب: {homework}',
     reminder: 'تذكير: لديكم جلسة {className} غداً في تمام الساعة {time}. نتطلع لحضور الطالب/ة {studentName}',
     announcement: 'إعلان مهم: {message}'
   };
+  const handleTestMessage = async () => {
+    if (!testPhoneNumber.trim()) {
+      setTestResult({ show: true, success: false, message: 'يرجى إدخال رقم الهاتف' });
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/whatsapp/test-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: testPhoneNumber,
+          message: testMessage || undefined
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setTestResult({ 
+          show: true, 
+          success: true, 
+          message: `✅ ${result.message}` 
+        });
+      } else {
+        setTestResult({ 
+          show: true, 
+          success: false, 
+          message: `❌ ${result.message}` 
+        });
+      }
+    } catch (error) {
+      setTestResult({ 
+        show: true, 
+        success: false, 
+        message: `❌ خطأ في الاتصال: ${error.message}` 
+      });
+    }
+
+    // إخفاء النتيجة بعد 5 ثواني
+    setTimeout(() => {
+      setTestResult({ show: false, success: false, message: '' });
+    }, 5000);
+  };
+
+  const handleSaveTemplate = (type: string, newTemplate: string) => {
+    setCustomTemplates({
+      ...customTemplates,
+      [type]: newTemplate
+    });
+    setEditingTemplate(null);
+    
+    // حفظ في localStorage
+    localStorage.setItem('whatsapp_templates', JSON.stringify({
+      ...customTemplates,
+      [type]: newTemplate
+    }));
+  };
+
+  // تحميل القوالب المحفوظة عند بدء التشغيل
+  React.useEffect(() => {
+    const savedTemplates = localStorage.getItem('whatsapp_templates');
+    if (savedTemplates) {
+      try {
+        setCustomTemplates(JSON.parse(savedTemplates));
+      } catch (error) {
+        console.error('خطأ في تحميل القوالب المحفوظة:', error);
+      }
+    }
+  }, []);
 
   const handleSendMessage = () => {
     if (!selectedSession || !messageTemplate) {
@@ -166,6 +240,16 @@ export const WhatsAppManagement: React.FC = () => {
               إرسال الرسائل
             </button>
             <button
+              onClick={() => setActiveTab('test')}
+              className={`py-2 px-4 border-b-2 font-medium text-sm ${
+                activeTab === 'test'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              اختبار الرسائل
+            </button>
+            <button
               onClick={() => setActiveTab('logs')}
               className={`py-2 px-4 border-b-2 font-medium text-sm ${
                 activeTab === 'logs'
@@ -200,7 +284,7 @@ export const WhatsAppManagement: React.FC = () => {
                     value={messageType}
                     onChange={(e) => {
                       setMessageType(e.target.value);
-                      setMessageTemplate(messageTemplates[e.target.value as keyof typeof messageTemplates]);
+                      setMessageTemplate(customTemplates[e.target.value as keyof typeof customTemplates]);
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -402,30 +486,74 @@ export const WhatsAppManagement: React.FC = () => {
             <div className="space-y-6">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-medium text-gray-900">قوالب الرسائل</h3>
-                <button
-                  onClick={() => setShowTemplateForm(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center"
-                >
-                  <Plus className="h-4 w-4 ml-2" />
-                  إضافة قالب
-                </button>
+                <div className="flex space-x-2 space-x-reverse">
+                  <button
+                    onClick={() => {
+                      setCustomTemplates(defaultTemplates);
+                      localStorage.setItem('whatsapp_templates', JSON.stringify(defaultTemplates));
+                    }}
+                    className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors duration-200 flex items-center"
+                  >
+                    استعادة الافتراضي
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {Object.entries(messageTemplates).map(([type, template]) => (
+              <div className="space-y-4">
+                {Object.entries(customTemplates).map(([type, template]) => (
                   <div key={type} className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-medium text-gray-900">{getMessageTypeText(type)}</h4>
                       <div className="flex space-x-2 space-x-reverse">
-                        <button className="text-green-600 hover:text-green-900 p-1" title="تعديل">
+                        <button 
+                          onClick={() => setEditingTemplate(type)}
+                          className="text-green-600 hover:text-green-900 p-1" 
+                          title="تعديل"
+                        >
                           <Edit className="h-4 w-4" />
-                        </button>
-                        <button className="text-red-600 hover:text-red-900 p-1" title="حذف">
-                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-600">{template}</p>
+                    {editingTemplate === type ? (
+                      <div className="space-y-2">
+                        <textarea
+                          value={template}
+                          onChange={(e) => setCustomTemplates({
+                            ...customTemplates,
+                            [type]: e.target.value
+                          })}
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                        <div className="flex space-x-2 space-x-reverse">
+                          <button
+                            onClick={() => handleSaveTemplate(type, customTemplates[type as keyof typeof customTemplates])}
+                            className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                          >
+                            حفظ
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingTemplate(null);
+                              setCustomTemplates({
+                                ...customTemplates,
+                                [type]: template
+                              });
+                            }}
+                            className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
+                          >
+                            إلغاء
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">{template}</p>
+                        <div className="mt-2 text-xs text-gray-500">
+                          المتغيرات المتاحة: {'{studentName}'}, {'{className}'}, {'{date}'}, {'{time}'}, {'{rating}'}, {'{participation}'}, {'{homework}'}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

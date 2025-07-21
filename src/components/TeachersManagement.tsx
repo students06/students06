@@ -3,8 +3,10 @@ import { useApp } from '../contexts/AppContext';
 import { GraduationCap, Plus, Edit, Trash2, Search, Eye } from 'lucide-react';
 
 export const TeachersManagement: React.FC = () => {
-  const { teachers, subjects, classes, addTeacher, updateTeacher, deleteTeacher } = useApp();
+  const { teachers, subjects, classes, addTeacher, updateTeacher, deleteTeacher, hasPermission } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -18,6 +20,15 @@ export const TeachersManagement: React.FC = () => {
     teacher.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // حساب البيانات للصفحة الحالية
+  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentTeachers = filteredTeachers.slice(startIndex, endIndex);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -79,6 +90,7 @@ export const TeachersManagement: React.FC = () => {
           <GraduationCap className="h-6 w-6 ml-2" />
           إدارة المعلمين
         </h1>
+        {hasPermission('teachersEdit') && (
         <button
           onClick={() => setShowAddForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center"
@@ -86,6 +98,7 @@ export const TeachersManagement: React.FC = () => {
           <Plus className="h-4 w-4 ml-2" />
           إضافة معلم
         </button>
+        )}
       </div>
 
       {/* نموذج الإضافة/التعديل */}
@@ -211,7 +224,7 @@ export const TeachersManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTeachers.map((teacher) => (
+              {currentTeachers.map((teacher) => (
                 <tr key={teacher.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
@@ -246,6 +259,7 @@ export const TeachersManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-2 space-x-reverse">
+                      {hasPermission('teachersEdit') && (
                       <button
                         onClick={() => handleEdit(teacher)}
                         className="text-green-600 hover:text-green-900 p-1"
@@ -253,6 +267,8 @@ export const TeachersManagement: React.FC = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </button>
+                      )}
+                      {hasPermission('teachersDelete') && (
                       <button
                         onClick={() => handleDelete(teacher.id)}
                         className="text-red-600 hover:text-red-900 p-1"
@@ -260,6 +276,7 @@ export const TeachersManagement: React.FC = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -267,12 +284,76 @@ export const TeachersManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                السابق
+              </button>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="mr-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                التالي
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  عرض <span className="font-medium">{startIndex + 1}</span> إلى{' '}
+                  <span className="font-medium">{Math.min(endIndex, filteredTeachers.length)}</span> من{' '}
+                  <span className="font-medium">{filteredTeachers.length}</span> نتيجة
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    السابق
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        page === currentPage
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    التالي
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {filteredTeachers.length === 0 && (
+      {currentTeachers.length === 0 && (
         <div className="text-center py-12">
           <GraduationCap className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">لا توجد معلمين مطابقين للبحث</p>
+          <p className="text-gray-500">
+            {filteredTeachers.length === 0 ? 'لا توجد معلمين مطابقين للبحث' : 'لا توجد بيانات في هذه الصفحة'}
+          </p>
         </div>
       )}
     </div>

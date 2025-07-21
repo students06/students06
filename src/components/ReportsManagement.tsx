@@ -61,7 +61,9 @@ export const ReportsManagement: React.FC = () => {
       selectedClass,
       selectedSession
     });
-    generateReport();
+    if (selectedReport && dateRange.startDate && dateRange.endDate) {
+      generateReport();
+    }
   }, [selectedReport, dateRange, selectedClass, selectedSession]);
 
   // فلترة الجلسات حسب الفصل المختار

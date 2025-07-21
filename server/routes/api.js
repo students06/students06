@@ -1116,6 +1116,7 @@ router.post('/reports/performance', async (req, res) => {
 
 router.post('/reports/attendance', async (req, res) => {
   try {
+    console.log('📊 طلب تقرير الحضور مع الفلاتر:', req.body);
     const { startDate, endDate, classId } = req.body;
     
     let query = `
@@ -1140,12 +1141,12 @@ router.post('/reports/attendance', async (req, res) => {
     const params = [];
     
     if (startDate) {
-      query += ' AND a.timestamp >= ?';
+      query += ' AND DATE(a.timestamp) >= ?';
       params.push(startDate);
     }
     
     if (endDate) {
-      query += ' AND a.timestamp <= ?';
+      query += ' AND DATE(a.timestamp) <= ?';
       params.push(endDate);
     }
     
@@ -1156,7 +1157,16 @@ router.post('/reports/attendance', async (req, res) => {
     
     query += ' GROUP BY s.id, s.name, s.barcode, c.name ORDER BY s.name';
     
+    console.log('🔍 استعلام تقرير الحضور:', query);
+    console.log('📊 معاملات الاستعلام:', params);
+    
     const reports = await executeQuery(query, params);
+    
+    console.log('✅ تم جلب', reports.length, 'سجل لتقرير الحضور');
+    if (reports.length > 0) {
+      console.log('📋 عينة من بيانات الحضور:', reports.slice(0, 3));
+    }
+    
     res.json({ success: true, data: reports });
   } catch (error) {
     console.error('خطأ في جلب تقرير الحضور:', error);

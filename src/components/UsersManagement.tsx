@@ -18,14 +18,29 @@ export const UsersManagement: React.FC = () => {
   const [showPermissionsModal, setShowPermissionsModal] = useState<{ show: boolean, userId: string, userName: string }>({ show: false, userId: '', userName: '' });
   const [userPermissions, setUserPermissions] = useState({
     students: true,
+    studentsEdit: true,
+    studentsDelete: false,
     classes: true,
+    classesEdit: true,
+    classesDelete: false,
     teachers: true,
+    teachersEdit: true,
+    teachersDelete: false,
     sessions: true,
+    sessionsEdit: true,
+    sessionsDelete: false,
     attendance: true,
+    attendanceEdit: true,
+    attendanceDelete: false,
     reports: true,
+    reportsEdit: true,
+    reportsDelete: false,
     whatsapp: true,
     settings: false,
-    users: false
+    settingsEdit: false,
+    users: false,
+    usersEdit: false,
+    usersDelete: false
   });
 
   const filteredUsers = users.filter(user => {
@@ -215,18 +230,38 @@ export const UsersManagement: React.FC = () => {
             <h2 className="text-lg font-semibold mb-4">إدارة صلاحيات: {showPermissionsModal.userName}</h2>
             <div className="space-y-3">
               {Object.entries({
-                students: 'إدارة الطلاب',
-                classes: 'إدارة الفصول',
-                teachers: 'إدارة المعلمين',
-                sessions: 'إدارة الجلسات',
-                attendance: 'تسجيل الحضور',
-                reports: 'التقارير',
-                whatsapp: 'إدارة الواتساب',
-                settings: 'الإعدادات',
-                users: 'إدارة المستخدمين'
-              }).map(([key, label]) => (
+                students: { label: 'عرض الطلاب', group: 'students' },
+                studentsEdit: { label: 'تعديل الطلاب', group: 'students' },
+                studentsDelete: { label: 'حذف الطلاب', group: 'students' },
+                classes: { label: 'عرض الفصول', group: 'classes' },
+                classesEdit: { label: 'تعديل الفصول', group: 'classes' },
+                classesDelete: { label: 'حذف الفصول', group: 'classes' },
+                teachers: { label: 'عرض المعلمين', group: 'teachers' },
+                teachersEdit: { label: 'تعديل المعلمين', group: 'teachers' },
+                teachersDelete: { label: 'حذف المعلمين', group: 'teachers' },
+                sessions: { label: 'عرض الجلسات', group: 'sessions' },
+                sessionsEdit: { label: 'تعديل الجلسات', group: 'sessions' },
+                sessionsDelete: { label: 'حذف الجلسات', group: 'sessions' },
+                attendance: { label: 'عرض الحضور', group: 'attendance' },
+                attendanceEdit: { label: 'تعديل الحضور', group: 'attendance' },
+                attendanceDelete: { label: 'حذف الحضور', group: 'attendance' },
+                reports: { label: 'عرض التقارير', group: 'reports' },
+                reportsEdit: { label: 'تعديل التقارير', group: 'reports' },
+                reportsDelete: { label: 'حذف التقارير', group: 'reports' },
+                whatsapp: { label: 'إدارة الواتساب', group: 'whatsapp' },
+                settings: { label: 'عرض الإعدادات', group: 'settings' },
+                settingsEdit: { label: 'تعديل الإعدادات', group: 'settings' },
+                users: { label: 'عرض المستخدمين', group: 'users' },
+                usersEdit: { label: 'تعديل المستخدمين', group: 'users' },
+                usersDelete: { label: 'حذف المستخدمين', group: 'users' }
+              }).map(([key, config]) => (
                 <div key={key} className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">{label}</span>
+                  <span className={`text-sm font-medium text-gray-700 ${
+                    key.includes('Edit') ? 'mr-4 text-blue-700' : 
+                    key.includes('Delete') ? 'mr-4 text-red-700' : ''
+                  }`}>
+                    {config.label}
+                  </span>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"

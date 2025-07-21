@@ -104,13 +104,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // حفظ واستعادة جلسة المستخدم
   useEffect(() => {
     const savedUser = localStorage.getItem('currentUser');
+    const loginTime = localStorage.getItem('loginTime');
+    
     if (savedUser) {
       try {
         const userData = JSON.parse(savedUser);
-        setCurrentUser(userData);
+        
+        // التحقق من انتهاء صلاحية الجلسة (24 ساعة)
+        if (loginTime) {
+          const loginTimestamp = parseInt(loginTime);
+          const currentTime = Date.now();
+          const sessionDuration = 24 * 60 * 60 * 1000; // 24 ساعة
+          
+          if (currentTime - loginTimestamp > sessionDuration) {
+            // انتهت صلاحية الجلسة
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('loginTime');
+            console.log('🔒 انتهت صلاحية الجلسة');
+          } else {
+            setCurrentUser(userData);
+          }
+        } else {
+          // إذا لم يكن هناك وقت تسجيل دخول، احذف الجلسة
+          localStorage.removeItem('currentUser');
+        }
       } catch (error) {
         console.error('Error parsing saved user data:', error);
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('loginTime');
       }
     }
   }, []);
@@ -119,8 +140,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (currentUser) {
       localStorage.setItem('currentUser', JSON.stringify(currentUser));
+      localStorage.setItem('loginTime', Date.now().toString());
     } else {
       localStorage.removeItem('currentUser');
+      localStorage.removeItem('loginTime');
     }
   }, [currentUser]);
 
@@ -266,11 +289,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setLocations([]);
     setWhatsappLogs([]);
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('loginTime');
   };
 
   const hasPermission = (permission: keyof UserPermissions): boolean => {
     if (!currentUser) return false;
     if (currentUser.role === 'admin') return true;
+    
+    // للصلاحيات الأساسية، تحقق من الصلاحية الأساسية أولاً
+    const basePermissions = ['students', 'classes', 'teachers', 'sessions', 'attendance', 'reports', 'whatsapp', 'settings', 'users'];
+    const basePermission = basePermissions.find(base => permission.startsWith(base));
+    
+    if (basePermission && !currentUser.permissions?.[basePermission as keyof UserPermissions]) {
+      return false;
+    }
+    
     return currentUser.permissions?.[permission] || false;
   };
 

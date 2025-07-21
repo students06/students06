@@ -3,9 +3,11 @@ import { useApp } from '../contexts/AppContext';
 import { Settings, Plus, Edit, Trash2, Search, MapPin, BookOpen, Users } from 'lucide-react';
 
 export const SettingsManagement: React.FC = () => {
-  const { locations, subjects, sessions, teachers, addLocation, updateLocation, deleteLocation, addSubject, updateSubject, deleteSubject } = useApp();
+  const { locations, subjects, sessions, teachers, addLocation, updateLocation, deleteLocation, addSubject, updateSubject, deleteSubject, hasPermission } = useApp();
   const [activeTab, setActiveTab] = useState('locations');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(9);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -24,6 +26,16 @@ export const SettingsManagement: React.FC = () => {
     subject.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // حساب البيانات للصفحة الحالية
+  const currentData = activeTab === 'locations' ? filteredLocations : filteredSubjects;
+  const totalPages = Math.ceil(currentData.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentItems = currentData.slice(startIndex, endIndex);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeTab]);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -112,6 +124,7 @@ export const SettingsManagement: React.FC = () => {
           <Settings className="h-6 w-6 ml-2" />
           الإعدادات
         </h1>
+        {hasPermission('settingsEdit') && (
         <button
           onClick={() => setShowAddForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center"
@@ -119,6 +132,7 @@ export const SettingsManagement: React.FC = () => {
           <Plus className="h-4 w-4 ml-2" />
           {activeTab === 'locations' ? 'إضافة مكان' : 'إضافة مادة'}
         </button>
+        )}
       </div>
 
       {/* نموذج الإضافة/التعديل */}
@@ -264,7 +278,7 @@ export const SettingsManagement: React.FC = () => {
           {/* عرض البيانات */}
           {activeTab === 'locations' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredLocations.map((location) => (
+              {(currentItems as typeof filteredLocations).map((location) => (
                 <div key={location.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -272,6 +286,7 @@ export const SettingsManagement: React.FC = () => {
                       {location.name}
                     </h3>
                     <div className="flex space-x-2 space-x-reverse">
+                      {hasPermission('settingsEdit') && (
                       <button
                         onClick={() => handleEdit(location)}
                         className="text-green-600 hover:text-green-900 p-1"
@@ -279,6 +294,8 @@ export const SettingsManagement: React.FC = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </button>
+                      )}
+                      {hasPermission('settingsEdit') && (
                       <button
                         onClick={() => handleDelete(location.id)}
                         className="text-red-600 hover:text-red-900 p-1"
@@ -286,6 +303,7 @@ export const SettingsManagement: React.FC = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                      )}
                     </div>
                   </div>
                   
@@ -312,7 +330,7 @@ export const SettingsManagement: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredSubjects.map((subject) => (
+              {(currentItems as typeof filteredSubjects).map((subject) => (
                 <div key={subject.id} className="bg-gray-50 rounded-lg p-4 hover:shadow-md transition-shadow duration-200">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center">
@@ -320,6 +338,7 @@ export const SettingsManagement: React.FC = () => {
                       {subject.name}
                     </h3>
                     <div className="flex space-x-2 space-x-reverse">
+                      {hasPermission('settingsEdit') && (
                       <button
                         onClick={() => handleEdit(subject)}
                         className="text-green-600 hover:text-green-900 p-1"
@@ -327,6 +346,8 @@ export const SettingsManagement: React.FC = () => {
                       >
                         <Edit className="h-4 w-4" />
                       </button>
+                      )}
+                      {hasPermission('settingsEdit') && (
                       <button
                         onClick={() => handleDelete(subject.id)}
                         className="text-red-600 hover:text-red-900 p-1"
@@ -334,6 +355,7 @@ export const SettingsManagement: React.FC = () => {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                      )}
                     </div>
                   </div>
                   
@@ -352,9 +374,44 @@ export const SettingsManagement: React.FC = () => {
             </div>
           )}
 
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center space-x-4 space-x-reverse mt-6">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                السابق
+              </button>
+              
+              <div className="flex space-x-1 space-x-reverse">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                      page === currentPage
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                التالي
+              </button>
+            </div>
+          )}
           {/* رسالة عدم وجود بيانات */}
-          {((activeTab === 'locations' && filteredLocations.length === 0) || 
-            (activeTab === 'subjects' && filteredSubjects.length === 0)) && (
+          {currentItems.length === 0 && (
             <div className="text-center py-12">
               {activeTab === 'locations' ? (
                 <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -362,7 +419,10 @@ export const SettingsManagement: React.FC = () => {
                 <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               )}
               <p className="text-gray-500">
-                لا توجد {activeTab === 'locations' ? 'أماكن' : 'مواد'} مطابقة للبحث
+                {currentData.length === 0 
+                  ? `لا توجد ${activeTab === 'locations' ? 'أماكن' : 'مواد'} مطابقة للبحث`
+                  : 'لا توجد بيانات في هذه الصفحة'
+                }
               </p>
             </div>
           )}

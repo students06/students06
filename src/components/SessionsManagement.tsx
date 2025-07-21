@@ -3,7 +3,7 @@ import { useApp } from '../contexts/AppContext';
 import { Calendar, Plus, Edit, Trash2, Search, Eye, Clock, Play, Square, CheckCircle, Star, MessageSquare, X, ToggleLeft, ToggleRight } from 'lucide-react';
 
 export const SessionsManagement: React.FC = () => {
-  const { sessions, classes, students, addSession, updateSession, deleteSession, toggleSessionStatus, attendance, addReport, reports, teachers, subjects, locations, getWhatsAppStatus } = useApp();
+  const { sessions, classes, students, addSession, updateSession, deleteSession, toggleSessionStatus, attendance, addReport, reports, teachers, subjects, locations, getWhatsAppStatus, hasPermission, recordAttendance } = useApp();
   
   // إضافة تسجيل للتحقق من البيانات
   React.useEffect(() => {
@@ -22,6 +22,8 @@ export const SessionsManagement: React.FC = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingSession, setEditingSession] = useState<string | null>(null);
   const [showSessionDetails, setShowSessionDetails] = useState<string | null>(null);
@@ -61,6 +63,15 @@ export const SessionsManagement: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // حساب البيانات للصفحة الحالية
+  const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentSessions = filteredSessions.slice(startIndex, endIndex);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
   // إضافة تسجيل للجلسات المفلترة
   React.useEffect(() => {
     console.log('📊 نتائج الفلترة:');
@@ -221,18 +232,31 @@ export const SessionsManagement: React.FC = () => {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return [];
     
-    const sessionClass = session.classId;
-    const classStudents = students.filter(s => s.classId === sessionClass);
+    // جلب جميع طلاب الفصل
+    const classStudents = students.filter(s => s.classId === session.classId);
     const sessionAttendance = attendance.filter(a => a.sessionId === sessionId);
+    
+    console.log('🔍 تحليل طلاب الجلسة:', {
+      sessionId,
+      classId: session.classId,
+      totalClassStudents: classStudents.length,
+      attendanceRecords: sessionAttendance.length
+    });
     
     return classStudents.map(student => {
       const attendanceRecord = sessionAttendance.find(a => a.studentId === student.id);
       const studentReport = reports.find(r => r.studentId === student.id && r.sessionId === sessionId);
-      return {
+      
+      const studentData = {
         ...student,
         attendanceStatus: attendanceRecord?.status || 'absent',
-        hasReport: !!studentReport
+        hasReport: !!studentReport,
+        attendanceId: attendanceRecord?.id
       };
+      
+      console.log(`👤 الطالب ${student.name}: ${studentData.attendanceStatus}`);
+      
+      return studentData;
     });
   };
   const getStatusIcon = (status: string) => {
@@ -300,6 +324,7 @@ export const SessionsManagement: React.FC = () => {
           <Calendar className="h-6 w-6 ml-2" />
           إدارة الجلسات
         </h1>
+        {hasPermission('sessionsEdit') && (
         <button
           onClick={() => setShowAddForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors duration-200 flex items-center"
@@ -307,6 +332,7 @@ export const SessionsManagement: React.FC = () => {
           <Plus className="h-4 w-4 ml-2" />
           إضافة جلسة
         </button>
+        )}
       </div>
 
       {/* نموذج الإضافة/التعديل */}
@@ -499,6 +525,11 @@ export const SessionsManagement: React.FC = () => {
                             </div>
                           </div>
                         ))}
+                        {presentStudents.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            <p>لا يوجد طلاب حاضرون</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                     
@@ -512,10 +543,28 @@ export const SessionsManagement: React.FC = () => {
                               <div>
                                 <p className="font-medium text-gray-900">{student.name}</p>
                                 <p className="text-sm text-gray-500">كود: {student.barcode}</p>
+                                <p className="text-xs text-red-600">غائب</p>
+                              </div>
+                              <div className="flex items-center space-x-2 space-x-reverse">
+                                <button
+                                  onClick={() => recordAttendance({
+                                    studentId: student.id,
+                                    sessionId: showSessionDetails,
+                                    status: 'present'
+                                  })}
+                                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                                >
+                                  تسجيل حضور
+                                </button>
                               </div>
                             </div>
                           </div>
                         ))}
+                        {absentStudents.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            <p>جميع الطلاب حاضرون! 🎉</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -700,7 +749,7 @@ export const SessionsManagement: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredSessions.map((session) => {
+              {currentSessions.map((session) => {
                 const sessionClass = classes.find(c => c.id === session.classId);
                 const sessionAttendance = attendance.filter(a => a.sessionId === session.id);
                 const presentCount = sessionAttendance.filter(a => a.status === 'present').length;
@@ -769,21 +818,19 @@ export const SessionsManagement: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2 space-x-reverse">
+                        {hasPermission('sessionsEdit') && (
                         <button
                           onClick={() => toggleSessionStatus(session.id)}
-                          className={`p-1 rounded ${
-                            session.status === 'active' 
-                              ? 'text-green-600 hover:text-green-900' 
-                              : 'text-gray-600 hover:text-gray-900'
-                          }`}
+                          className="p-1 rounded text-blue-600 hover:text-blue-900 bg-blue-100 hover:bg-blue-200 transition-colors"
                           title={session.status === 'active' ? 'تحويل إلى مكتملة' : 'تحويل إلى نشطة'}
                         >
                           {session.status === 'active' ? (
-                            <ToggleRight className="h-5 w-5" />
+                            <Square className="h-4 w-4" />
                           ) : (
-                            <ToggleLeft className="h-5 w-5" />
+                            <Play className="h-4 w-4" />
                           )}
                         </button>
+                        )}
                         <button
                           onClick={() => setShowSessionDetails(session.id)}
                           className="text-blue-600 hover:text-blue-900 p-1"
@@ -791,6 +838,7 @@ export const SessionsManagement: React.FC = () => {
                         >
                           <Eye className="h-4 w-4" />
                         </button>
+                        {hasPermission('sessionsEdit') && (
                         <button
                           onClick={() => handleEdit(session)}
                           className="text-green-600 hover:text-green-900 p-1"
@@ -798,6 +846,8 @@ export const SessionsManagement: React.FC = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </button>
+                        )}
+                        {hasPermission('sessionsDelete') && (
                         <button
                           onClick={() => handleDelete(session.id)}
                           className="text-red-600 hover:text-red-900 p-1"
@@ -805,6 +855,7 @@ export const SessionsManagement: React.FC = () => {
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -813,12 +864,76 @@ export const SessionsManagement: React.FC = () => {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="flex-1 flex justify-between sm:hidden">
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                السابق
+              </button>
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                className="mr-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                التالي
+              </button>
+            </div>
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  عرض <span className="font-medium">{startIndex + 1}</span> إلى{' '}
+                  <span className="font-medium">{Math.min(endIndex, filteredSessions.length)}</span> من{' '}
+                  <span className="font-medium">{filteredSessions.length}</span> نتيجة
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                  <button
+                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    السابق
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        page === currentPage
+                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                    disabled={currentPage === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    التالي
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {filteredSessions.length === 0 && (
+      {currentSessions.length === 0 && (
         <div className="text-center py-12">
           <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">لا توجد جلسات مطابقة للبحث</p>
+          <p className="text-gray-500">
+            {filteredSessions.length === 0 ? 'لا توجد جلسات مطابقة للبحث' : 'لا توجد بيانات في هذه الصفحة'}
+          </p>
         </div>
       )}
     </div>

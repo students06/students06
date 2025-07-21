@@ -346,7 +346,7 @@ class ApiService {
   async initializeWhatsApp() {
     console.log('🚀 طلب تهيئة الواتساب من API...');
     const result = await this.request('/whatsapp/initialize', {
-      method: 'POST',
+      throw error;
     });
     console.log('📡 استجابة تهيئة الواتساب:', result);
     return result;
